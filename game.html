@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>蜜蜂嗡嗡嗡：部首採蜜挑戰賽！</title>
+    <style>
+        :root {
+            --primary-color: #ffcb39;
+            --bg-color: #e8f5e9; /* 草綠色背景 */
+        }
+        body {
+            font-family: 'Comic Sans MS', "Chalkboard SE", "Microsoft JhengHei", sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            user-select: none;
+        }
+        #game-container {
+            background: white;
+            padding: 30px;
+            border-radius: 30px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 600px;
+            text-align: center;
+            border: 8px solid var(--primary-color);
+            position: relative;
+        }
+        h1 { color: #2d3436; margin-top: 0; font-size: 28px; }
+        h2 { color: #2c3e50; font-size: 24px; }
+        .btn {
+            background: #f1c40f;
+            color: #2c3e50;
+            border: none;
+            padding: 15px 40px;
+            font-size: 22px;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 5px #d35400;
+            transition: all 0.1s;
+            font-weight: bold;
+        }
+        .btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 1px #d35400;
+        }
+        
+        /* 進入遊戲後滑鼠變成蜜蜂 */
+        .bee-cursor {
+            cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32' style='font-size:24px'><text y='24'>🐝</text></svg>"), auto;
+        }
+
+        #word-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin: 25px 0;
+        }
+        
+        /* 花朵造型卡片 */
+        .word-card {
+            background: #ff7675;
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+            width: 100px;
+            height: 100px;
+            margin: auto;
+            border-radius: 50%; /* 圓形花朵 */
+            position: relative;
+            cursor: pointer;
+            box-shadow: 0 6px #d63031;
+            transition: transform 0.1s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 4px dashed #fff;
+        }
+        /* 裝飾花芯 */
+        .word-card::after {
+            content: '';
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            z-index: 0;
+        }
+        .word-card span {
+            z-index: 1;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+        .word-card:active {
+            transform: scale(0.95);
+        }
+        /* 採蜜成功（綠色盛開） */
+        .word-card.correct {
+            background: #2ecc71 !important;
+            box-shadow: 0 6px #27ae60 !important;
+            animation: bounce 0.4s ease;
+        }
+        /* 採錯花朵（枯萎震動） */
+        .word-card.wrong {
+            background: #95a5a6 !important;
+            box-shadow: 0 6px #7f8c8d !important;
+            animation: shake 0.3s ease;
+        }
+        
+        /* 計時條 */
+        #timer-bar {
+            width: 100%;
+            background: #eee;
+            height: 24px;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 15px;
+            border: 2px solid #bdc3c7;
+        }
+        #timer-fill {
+            width: 100%;
+            height: 100%;
+            background: #e67e22;
+            transition: width 0.1s linear, background-color 0.3s;
+        }
+        .status-info {
+            font-size: 20px;
+            margin-bottom: 15px;
+            font-weight: bold;
+            color: #27ae60;
+        }
+
+        /* 處罰加時浮動特效 */
+        #penalty-toast {
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #c0392b;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            opacity: 0;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .show-penalty {
+            animation: floatUp 0.8s ease-out;
+        }
+
+        /* 動畫效果 */
+        @keyframes shake {
+            0% { transform: translateX(0) rotate(0deg); }
+            25% { transform: translateX(-8px) rotate(-5deg); }
+            75% { transform: translateX(8px) rotate(5deg); }
+            100% { transform: translateX(0) rotate(0deg); }
+        }
+        @keyframes bounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+        @keyframes floatUp {
+            0% { opacity: 0; transform: translate(-50%, 0); }
+            20% { opacity: 1; transform: translate(-50%, -20px); }
+            80% { opacity: 1; transform: translate(-50%, -20px); }
+            100% { opacity: 0; transform: translate(-50%, -40px); }
+        }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="penalty-toast">💥 叮！選錯了，時間扣 5 秒！ 💥</div>
+
+    <div id="start-screen">
+        <h1>🐝 小蜜蜂嗡嗡嗡：部首採蜜賽 🌻</h1>
+        <p style="font-size: 18px; color: #636e72;">小蜜蜂，快動動眼睛！找出藏有正確部首的「文字花朵」！<br><strong style="color: #c0392b;">注意：採錯花朵時間會減少 5 秒喔！</strong></p>
+        <button class="btn" onclick="startGame()">變身小蜜蜂，出發！</button>
+    </div>
+
+    <div id="game-screen" class="hidden">
+        <h2 id="level-title">第一關：找出「心」部首的花朵</h2>
+        <div class="status-info">🌸 還需要採集：<span id="target-count">0</span> 朵花</div>
+        <div id="timer-bar"><div id="timer-fill"></div></div>
+        <div id="word-grid"></div>
+    </div>
+
+    <div id="end-screen" class="hidden">
+        <h1>🏆 採蜜任務完成！ 🏆</h1>
+        <p id="result-text" style="font-size: 24px; font-weight: bold; color: #6c5ce7;"></p>
+        <button class="btn" onclick="resetGame()">再挑戰一次</button>
+    </div>
+</div>
+
+<script>
+    const levels = [
+        {
+            title: "第一關：幫小蜜蜂找出「心」部首的花朵！",
+            targetRadical: "心",
+            words: [
+                { text: "想", isTarget: true }, { text: "打", isTarget: false },
+                { text: "快", isTarget: true }, { text: "花", isTarget: false },
+                { text: "念", isTarget: true }, { text: "門", isTarget: false },
+                { text: "忙", isTarget: true }, { text: "草", isTarget: false },
+                { text: "意", isTarget: true }, { text: "河", isTarget: false },
+                { text: "情", isTarget: true }, { text: "鳥", isTarget: false }
+            ]
+        },
+        {
+            title: "第二關：幫小蜜蜂找出「火」部首的花朵！",
+            targetRadical: "火",
+            words: [
+                { text: "燒", isTarget: true }, { text: "看", isTarget: false },
+                { text: "熱", isTarget: true }, { text: "林", isTarget: false },
+                { text: "燈", isTarget: true }, { text: "水", isTarget: false },
+                { text: "點", isTarget: true }, { text: "山", isTarget: false },
+                { text: "照", isTarget: true }, { text: "石", isTarget: false },
+                { text: "玩", isTarget: false }, { text: "炒", isTarget: true }
+            ]
+        }
+    ];
+
+    let currentLevel = 0;
+    let targetLeft = 0;
+    let levelStartTime;
+    let gameTimer;
+    let totalTimeUsed = 0;
+    let currentLevelDuration = 25000; // 每關初始 25 秒
+    let timePenaltySpent = 0; // 累計被扣掉的毫秒數
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let bgmInterval;
+
+    function playSound(freq, type, duration) {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+    }
+
+    // 模擬蜜蜂嗡嗡與輕快木琴風的 BGM
+    function startBGM() {
+        if (bgmInterval) clearInterval(bgmInterval);
+        const notes = [329.63, 392.00, 440.00, 523.25, 440.00, 392.00]; 
+        let step = 0;
+        bgmInterval = setInterval(() => {
+            playSound(notes[step % notes.length], 'triangle', 0.12);
+            step++;
+        }, 250); 
+    }
+
+    function stopBGM() { clearInterval(bgmInterval); }
+    function playCorrectSound() {
+        playSound(587.33, 'sine', 0.08); 
+        setTimeout(() => playSound(880.00, 'sine', 0.12), 60); 
+    }
+    function playWrongSound() { playSound(110, 'sawtooth', 0.25); }
+    function playWinSound() {
+        const winNotes = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+        winNotes.forEach((note, i) => {
+            setTimeout(() => playSound(note, 'sine', 0.25), i * 100);
+        });
+    }
+
+    function startGame() {
+        audioCtx.resume();
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('game-screen').classList.remove('hidden');
+        document.body.classList.add('bee-cursor'); // 變成蜜蜂游標
+        currentLevel = 0;
+        totalTimeUsed = 0;
+        startBGM();
+        loadLevel();
+    }
+
+    function loadLevel() {
+        const data = levels[currentLevel];
+        document.getElementById('level-title').innerText = data.title;
+        
+        const grid = document.getElementById('word-grid');
+        grid.innerHTML = ''; 
+
+        const shuffledWords = [...data.words].sort(() => Math.random() - 0.5);
+        targetLeft = shuffledWords.filter(w => w.isTarget).length;
+        document.getElementById('target-count').innerText = targetLeft;
+
+        // 花朵顏色陣列，隨機賦予花朵不同色彩
+        const flowerColors = ['#ff7675', '#fd79a8', '#ffeaa7', '#fab1a0', '#fdcb6e'];
+
+        shuffledWords.forEach(word => {
+            const card = document.createElement('div');
+            card.className = 'word-card';
+            // 隨機發花朵顏色
+            card.style.backgroundColor = flowerColors[Math.floor(Math.random() * flowerColors.length)];
+            card.style.boxShadow = `0 6px rgba(0,0,0,0.15)`;
+            
+            const textSpan = document.createElement('span');
+            textSpan.innerText = word.text;
+            card.appendChild(textSpan);
+
+            card.onclick = () => handleCardClick(card, word.isTarget);
+            grid.appendChild(card);
+        });
+
+        levelStartTime = Date.now();
+        timePenaltySpent = 0; // 重設這關的處罰時間
+        startTimer();
+    }
+
+    function startTimer() {
+        const fill = document.getElementById('timer-fill');
+        clearInterval(gameTimer);
+        
+        gameTimer = setInterval(() => {
+            // 總共耗時 = 實際流逝時間 + 因懲罰被扣掉的時間
+            let elapsed = (Date.now() - levelStartTime) + timePenaltySpent;
+            let remainPercent = Math.max(0, 100 - (elapsed / currentLevelDuration) * 100);
+            fill.style.width = remainPercent + '%';
+
+            // 倒數低於 30% 時計時條變紅色警告
+            if(remainPercent < 30) {
+                fill.style.backgroundColor = '#d63031';
+            } else {
+                fill.style.backgroundColor = '#e67e22';
+            }
+
+            if (elapsed >= currentLevelDuration) {
+                clearInterval(gameTimer);
+                alert('大自然起風囉！小蜜蜂沒時間了，再挑戰一次吧！');
+                resetGame();
+            }
+        }, 100);
+    }
+
+    function handleCardClick(card, isTarget) {
+        if (card.classList.contains('correct') || card.classList.contains('wrong')) return;
+
+        if (isTarget) {
+            card.classList.add('correct');
+            playCorrectSound();
+            targetLeft--;
+            document.getElementById('target-count').innerText = targetLeft;
+
+            if (targetLeft === 0) {
+                clearInterval(gameTimer);
+                // 該關卡最終花費時間（包含處罰的加時）
+                let timeSpent = ((Date.now() - levelStartTime) + timePenaltySpent) / 1000;
+                totalTimeUsed += timeSpent;
+                
+                setTimeout(() => { nextLevel(); }, 600);
+            }
+        } else {
+            card.classList.add('wrong');
+            playWrongSound();
+            
+            // 處罰核心：時間條直接扣 5 秒（即時間流逝進度加上 5000 毫秒）
+            timePenaltySpent += 5000;
+            
+            // 顯示「加時 5 秒」浮動文字特效
+            const toast = document.getElementById('penalty-toast');
+            toast.classList.remove('show-penalty');
+            void toast.offsetWidth; // 觸發 CSS 重繪
+            toast.classList.add('show-penalty');
+
+            setTimeout(() => card.classList.remove('wrong'), 300);
+        }
+    }
+
+    function nextLevel() {
+        currentLevel++;
+        if (currentLevel < levels.length) {
+            loadLevel();
+        } else {
+            endGame();
+        }
+    }
+
+    function endGame() {
+        stopBGM();
+        playWinSound();
+        document.body.classList.remove('bee-cursor');
+        document.getElementById('game-screen').classList.add('hidden');
+        document.getElementById('end-screen').classList.remove('hidden');
+        document.getElementById('result-text').innerText = `🌻 太棒了！勤勞的小蜜蜂一共花了 ${totalTimeUsed.toFixed(2)} 秒完成採蜜任務！`;
+    }
+
+    function resetGame() {
+        stopBGM();
+        clearInterval(gameTimer);
+        document.body.classList.remove('bee-cursor');
+        document.getElementById('end-screen').classList.add('hidden');
+        document.getElementById('game-screen').classList.add('hidden');
+        document.getElementById('start-screen').classList.remove('hidden');
+    }
+</script>
+
+</body>
+</html>
